@@ -365,6 +365,24 @@ class ReadState {
   void get_next_overlapping_tile_sparse();
 
   /**
+   * Gets the next overlapping tile from the fragment. This is applicable
+   * only to **sparse** arrays.
+   *
+   * @tparam T The coordinates type.
+   * @return void
+   */
+  template<class T>
+  void get_next_overlapping_tile_sparse_with_index();
+
+  /**
+  * Gets indicies all overlapping tiles from fragments. For sparse arrays only.
+  *
+  *
+  * @return void
+  */
+  void get_overlapping_tile_candidates();
+
+  /**
    * Gets the next overlapping tile from the fragment, such that it overlaps or
    * succeeds the tile with the input tile coordinates. This is applicable
    * only to **sparse** fragments for **dense** arrays.
@@ -447,6 +465,11 @@ class ReadState {
   void* search_tile_overlap_subarray_;
   /** The positions of the currently investigated tile. */
   int64_t search_tile_pos_;
+  /** Position into search_tile_candidates_ */
+  int64_t search_tile_pos_idx_;
+  /** Indices into overlapping MBRs of current query subarray */
+  std::vector<int64_t> search_tile_candidates_;
+
   /** 
    * True if the fragment non-empty domain fully covers the subarray area
    * in the current overlapping tile.

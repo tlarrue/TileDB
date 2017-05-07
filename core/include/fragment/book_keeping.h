@@ -35,6 +35,7 @@
 
 #include "array_schema.h"
 #include "tiledb_constants.h"
+#include "mbr_index.h"
 #include <vector>
 #include <zlib.h>
 
@@ -118,6 +119,9 @@ class BookKeeping {
 
   /** Returns the MBRs. */
   const std::vector<void*>& mbrs() const; 
+
+  /** Returns the Mbr Index */
+  MbrIndex* mbr_index();
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
@@ -252,6 +256,8 @@ class BookKeeping {
   int64_t last_tile_cell_num_;
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
+  /** R-Tree Index for MBRs(applicable only to sparse case with irregular tiles). */
+  MbrIndex* mbr_index_;
   /** The mode in which the fragment was initialized. */
   int mode_;
   /** The offsets of the next tile for each attribute. */
@@ -365,6 +371,13 @@ class BookKeeping {
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
   int load_mbrs(gzFile fd);
+
+  /**
+  * Builds R-tree for MBR indexing (sparse arrays only).
+  *
+  * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+  */
+  int build_mbr_index();
 
   /**
    * Loads the non-empty domain from the book-keeping file on disk.

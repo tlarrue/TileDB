@@ -138,6 +138,10 @@ const std::vector<void*>& BookKeeping::mbrs() const {
   return mbrs_;
 }
 
+MbrIndex* BookKeeping::mbr_index() {
+  return mbr_index_;
+}
+
 const void* BookKeeping::non_empty_domain() const {
   return non_empty_domain_;
 }
@@ -402,6 +406,12 @@ int BookKeeping::load() {
   // Load MBRs
   if(load_mbrs(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
+
+  // Build MBR Index
+  if (!dense_){
+    if(build_mbr_index() != TILEDB_BK_OK)
+      return TILEDB_BK_ERR;
+  }
 
   // Load bounding coordinates
   if(load_bounding_coords(fd) != TILEDB_BK_OK)
@@ -797,6 +807,19 @@ int BookKeeping::load_mbrs(gzFile fd) {
     }
     mbrs_[i] = mbr;
   }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+int BookKeeping::build_mbr_index() {
+
+  // For easy reference 
+  int dim = array_schema_->dim_num();
+  mbr_index_ = new MbrIndex();
+
+  std::cout << "\nBUILDING MBR INDEX" << std::endl;
+  return mbr_index_->buildTree(mbrs_, dim);
 
   // Success
   return TILEDB_BK_OK;
