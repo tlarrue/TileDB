@@ -66,6 +66,8 @@
 /* ****************************** */
 
 std::string tiledb_rs_errmsg = "";
+bool USING_INDEX = true;
+bool DEBUG_MODE_RS = true;
 
 
 
@@ -96,6 +98,7 @@ ReadState::ReadState(
   map_addr_var_lengths_.resize(attribute_num_);
   search_tile_overlap_subarray_ = malloc(2*coords_size_);
   search_tile_pos_ = -1;
+  search_tile_pos_idx_ = -1;
   tile_compressed_ = NULL;
   tile_compressed_allocated_size_ = 0;
   tiles_.resize(attribute_num_+2);
@@ -922,37 +925,105 @@ void ReadState::get_next_overlapping_tile_sparse() {
   if(done_)
     return;
 
-  // For easy reference
-  const std::vector<void*>& mbrs = book_keeping_->mbrs();
-  const T* subarray = static_cast<const T*>(array_->subarray());
+  if (USING_INDEX){
+    get_next_overlapping_tile_sparse_with_index<T>();
+    return;
+  } 
+  else {
+    // For easy reference
+    const std::vector<void*>& mbrs = book_keeping_->mbrs();
+    const T* subarray = static_cast<const T*>(array_->subarray());
 
-  // Update the search tile position
-  if(search_tile_pos_ == -1)
-     search_tile_pos_ = tile_search_range_[0];
-  else
-    ++search_tile_pos_;
-
-  // Find the position to the next overlapping tile with the query range
-  for(;;) {
-    // No overlap - exit
-    if(search_tile_pos_ > tile_search_range_[1]) {
-      done_ = true;
-      return;
-    }
-
-    const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
-    search_tile_overlap_ = 
-        array_schema_->subarray_overlap(
-            subarray,
-            mbr, 
-            static_cast<T*>(search_tile_overlap_subarray_));
-
-    if(!search_tile_overlap_)
-      ++search_tile_pos_;
+    // Update the search tile position
+    if(search_tile_pos_ == -1)
+       search_tile_pos_ = tile_search_range_[0];
     else
-      return;
+      ++search_tile_pos_;
+
+    // Find the position to the next overlapping tile with the query range
+    for(;;) {
+      // No overlap - exit
+      if(search_tile_pos_ > tile_search_range_[1]) {
+        done_ = true;
+        return;
+      }
+
+      const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
+      search_tile_overlap_ = 
+          array_schema_->subarray_overlap(
+              subarray,
+              mbr, 
+              static_cast<T*>(search_tile_overlap_subarray_));
+
+      if(!search_tile_overlap_)
+        ++search_tile_pos_;
+      else
+        return;
+    }
   }
 }
+
+void ReadState::get_overlapping_tile_candidates(){
+  const double* subarray = static_cast<const double*>(array_->subarray());
+  book_keeping_->mbr_index()->intersectQuery(subarray, search_tile_candidates_);
+
+  //TESTING
+  if (DEBUG_MODE_RS){
+    std::cout << "Result size: " << search_tile_candidates_.size() << std::endl;
+    for (int i=0; i<search_tile_candidates_.size(); i++){
+        std::cout << search_tile_candidates_[i] << std::endl;
+    }
+  }
+
+}
+
+template<class T> 
+void ReadState::get_next_overlapping_tile_sparse_with_index(){
+
+  if (search_tile_candidates_.size() == 0){
+    if (DEBUG_MODE_RS)
+      std::cout << "No Search tile candidates found. Performing intersect query..." << std::endl; 
+    get_overlapping_tile_candidates();
+  }
+
+  // Advance position in search_tile_candidates_
+  ++search_tile_pos_idx_; 
+
+  if (search_tile_pos_idx_ >= search_tile_candidates_.size()){
+    done_ = true;
+    //reset variables
+    search_tile_candidates_.clear();
+    search_tile_pos_idx_ = -1;
+    search_tile_pos_ = -1;
+    //free(search_tile_overlap_subarray_);
+    return;
+  } 
+
+  search_tile_pos_ = search_tile_candidates_[search_tile_pos_idx_];
+  if (DEBUG_MODE_RS)
+    std::cout << "Getting overlap range for MBR: " << search_tile_pos_ << std::endl;
+
+  // Get overlap range of search tile
+  const T* mbr = static_cast<const T*>(book_keeping_->mbrs()[search_tile_pos_]); 
+  const T* subarray = static_cast<const T*>(array_->subarray());
+  int dim_num = array_schema_->dim_num();
+
+  for(int i=0; i<dim_num; ++i) {
+    static_cast<T*>(search_tile_overlap_subarray_)[2*i] = std::max(mbr[2*i], subarray[2*i]);
+    static_cast<T*>(search_tile_overlap_subarray_)[2*i+1] = std::min(mbr[2*i+1], subarray[2*i+1]);
+  }
+
+  if (DEBUG_MODE_RS){
+    std::cout << "Overlap Range: " << std::endl;
+    for (int i=0; i < dim_num*2; i++){
+      std::cout << static_cast<T*>(search_tile_overlap_subarray_)[i] << std::endl;
+    }
+  }
+
+  return;
+
+}
+
 
 template<class T> 
 void ReadState::get_next_overlapping_tile_sparse(
