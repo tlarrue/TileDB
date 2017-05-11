@@ -67,7 +67,7 @@
 
 std::string tiledb_rs_errmsg = "";
 bool USING_INDEX = true;
-bool DEBUG_MODE_RS = true;
+bool DEBUG_MODE_RS = false;
 
 
 
@@ -250,6 +250,8 @@ void ReadState::reset() {
   reset_overflow();
   done_ = false;
   search_tile_pos_ = -1;
+  search_tile_pos_idx_ = -1;
+  search_tile_candidates_.clear();
   compute_tile_search_range();
 
   for(int i=0; i<attribute_num_+2; ++i)
@@ -925,11 +927,13 @@ void ReadState::get_next_overlapping_tile_sparse() {
   if(done_)
     return;
 
-  if (USING_INDEX){
+  if (USING_INDEX)
+  {
     get_next_overlapping_tile_sparse_with_index<T>();
     return;
   } 
-  else {
+  else 
+  {
     // For easy reference
     const std::vector<void*>& mbrs = book_keeping_->mbrs();
     const T* subarray = static_cast<const T*>(array_->subarray());
@@ -957,8 +961,16 @@ void ReadState::get_next_overlapping_tile_sparse() {
 
       if(!search_tile_overlap_)
         ++search_tile_pos_;
-      else
+      else{
+        if (DEBUG_MODE_RS){
+          std::cout << "Overlap Range for MBR: " << search_tile_pos_ << std::endl; 
+          for (int i=0; i < array_schema_->dim_num()*2; i++){
+            std::cout << static_cast<T*>(search_tile_overlap_subarray_)[i] << std::endl;
+          }
+        }
         return;
+      }
+        
     }
   }
 }
@@ -989,39 +1001,40 @@ void ReadState::get_next_overlapping_tile_sparse_with_index(){
   // Advance position in search_tile_candidates_
   ++search_tile_pos_idx_; 
 
-  if (search_tile_pos_idx_ >= search_tile_candidates_.size()){
-    done_ = true;
-    //reset variables
-    search_tile_candidates_.clear();
-    search_tile_pos_idx_ = -1;
-    search_tile_pos_ = -1;
-    //free(search_tile_overlap_subarray_);
-    return;
-  } 
-
-  search_tile_pos_ = search_tile_candidates_[search_tile_pos_idx_];
-  if (DEBUG_MODE_RS)
-    std::cout << "Getting overlap range for MBR: " << search_tile_pos_ << std::endl;
-
-  // Get overlap range of search tile
-  const T* mbr = static_cast<const T*>(book_keeping_->mbrs()[search_tile_pos_]); 
+  // For easy reference
+  const std::vector<void*>& mbrs = book_keeping_->mbrs();
   const T* subarray = static_cast<const T*>(array_->subarray());
-  int dim_num = array_schema_->dim_num();
 
-  for(int i=0; i<dim_num; ++i) {
-    static_cast<T*>(search_tile_overlap_subarray_)[2*i] = std::max(mbr[2*i], subarray[2*i]);
-    static_cast<T*>(search_tile_overlap_subarray_)[2*i+1] = std::min(mbr[2*i+1], subarray[2*i+1]);
-  }
-
-  if (DEBUG_MODE_RS){
-    std::cout << "Overlap Range: " << std::endl;
-    for (int i=0; i < dim_num*2; i++){
-      std::cout << static_cast<T*>(search_tile_overlap_subarray_)[i] << std::endl;
+  // Find the position to the next overlapping tile with the query range
+  for(;;) {
+    // No overlap - exit
+    if(search_tile_pos_idx_ >= search_tile_candidates_.size()) {
+      done_ = true;
+      return;
+    } else {
+      search_tile_pos_ = search_tile_candidates_[search_tile_pos_idx_];
     }
+
+    const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
+    search_tile_overlap_ = 
+        array_schema_->subarray_overlap(
+            subarray,
+            mbr, 
+            static_cast<T*>(search_tile_overlap_subarray_));
+
+    if(!search_tile_overlap_){
+      ++search_tile_pos_idx_;
+    }  
+    else{
+      if (DEBUG_MODE_RS){
+        std::cout << "Overlap Range for MBR: " << search_tile_pos_ << std::endl;
+        for (int i=0; i < array_schema_->dim_num()*2; i++){
+          std::cout << static_cast<T*>(search_tile_overlap_subarray_)[i] << std::endl;
+        }
+      }
+      return;
+    }   
   }
-
-  return;
-
 }
 
 

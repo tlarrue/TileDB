@@ -22,7 +22,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
-bool DEBUG_MODE = true;
+bool DEBUG_MODE = false;
 
 /** Stores potential error messages. */
 std::string tiledb_mi_errmsg = "";
@@ -152,6 +152,7 @@ void MbrIndex::intersect2d(const double* subarray, std::vector<int64_t> &result)
     for (int i=0; i<q.size(); i++){
         result.push_back(q[i].second);
     }
+    std::sort(result.begin(), result.end());
 }
 
 /*
@@ -168,6 +169,7 @@ void MbrIndex::intersect3d(const double* subarray, std::vector<int64_t> &result)
     for (int i=0; i<q.size(); i++){
         result.push_back(q[i].second);
     }
+    std::sort(result.begin(), result.end());
 }
 
 bool MbrIndex::testTree2d(std::vector<void*> &mbrs){
