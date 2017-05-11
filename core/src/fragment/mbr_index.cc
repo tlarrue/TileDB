@@ -22,8 +22,6 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
-bool DEBUG_MODE = false;
-
 /** Stores potential error messages. */
 std::string tiledb_mi_errmsg = "";
 
@@ -105,16 +103,6 @@ void MbrIndex::build2d(std::vector<void*> &mbrs){
 
     pack_rtree2d rtree(pairs);
     rtree2d_ = rtree;
-
-    //TEST 2D case
-    if (DEBUG_MODE){
-        bool success = testTree2d(mbrs);
-        if (success){
-            std::cout << "2-D R-tree build successfully" << std::endl;
-        } else {
-            std::cout << "ERROR: 2-D R-tree incorrect" << std::endl; 
-        }
-    }
 }
 
 /*
@@ -149,9 +137,12 @@ void MbrIndex::intersect2d(const double* subarray, std::vector<int64_t> &result)
 
     rtree2d_.query(bgi::intersects(query_box), std::back_inserter(q));
 
-    for (int i=0; i<q.size(); i++){
-        result.push_back(q[i].second);
-    }
+    result.reserve(q.size());
+    std::transform(q.begin(),
+                   q.end(),
+                   std::back_inserter(result),
+                   [](value2d& c){return c.second;});
+    
     std::sort(result.begin(), result.end());
 }
 
@@ -166,9 +157,12 @@ void MbrIndex::intersect3d(const double* subarray, std::vector<int64_t> &result)
     
     rtree3d_.query(bgi::intersects(query_box), std::back_inserter(q));
     
-    for (int i=0; i<q.size(); i++){
-        result.push_back(q[i].second);
-    }
+    result.reserve(q.size());
+    std::transform(q.begin(),
+                   q.end(),
+                   std::back_inserter(result),
+                   [](value3d& c){return c.second;});
+    
     std::sort(result.begin(), result.end());
 }
 

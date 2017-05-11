@@ -962,12 +962,6 @@ void ReadState::get_next_overlapping_tile_sparse() {
       if(!search_tile_overlap_)
         ++search_tile_pos_;
       else{
-        if (DEBUG_MODE_RS){
-          std::cout << "Overlap Range for MBR: " << search_tile_pos_ << std::endl; 
-          for (int i=0; i < array_schema_->dim_num()*2; i++){
-            std::cout << static_cast<T*>(search_tile_overlap_subarray_)[i] << std::endl;
-          }
-        }
         return;
       }
         
@@ -978,23 +972,12 @@ void ReadState::get_next_overlapping_tile_sparse() {
 void ReadState::get_overlapping_tile_candidates(){
   const double* subarray = static_cast<const double*>(array_->subarray());
   book_keeping_->mbr_index()->intersectQuery(subarray, search_tile_candidates_);
-
-  //TESTING
-  if (DEBUG_MODE_RS){
-    std::cout << "Result size: " << search_tile_candidates_.size() << std::endl;
-    for (int i=0; i<search_tile_candidates_.size(); i++){
-        std::cout << search_tile_candidates_[i] << std::endl;
-    }
-  }
-
 }
 
 template<class T> 
 void ReadState::get_next_overlapping_tile_sparse_with_index(){
 
   if (search_tile_candidates_.size() == 0){
-    if (DEBUG_MODE_RS)
-      std::cout << "No Search tile candidates found. Performing intersect query..." << std::endl; 
     get_overlapping_tile_candidates();
   }
 
@@ -1026,12 +1009,6 @@ void ReadState::get_next_overlapping_tile_sparse_with_index(){
       ++search_tile_pos_idx_;
     }  
     else{
-      if (DEBUG_MODE_RS){
-        std::cout << "Overlap Range for MBR: " << search_tile_pos_ << std::endl;
-        for (int i=0; i < array_schema_->dim_num()*2; i++){
-          std::cout << static_cast<T*>(search_tile_overlap_subarray_)[i] << std::endl;
-        }
-      }
       return;
     }   
   }
