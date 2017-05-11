@@ -1022,6 +1022,12 @@ void ReadState::get_next_overlapping_tile_sparse(
   if(done_)
     return;
 
+  if (USING_INDEX){
+    if (search_tile_candidates_.size() == 0){
+      get_overlapping_tile_candidates();
+    }
+  }
+
   // For easy reference
   int dim_num = array_schema_->dim_num();
   const std::vector<void*>& mbrs = book_keeping_->mbrs();
@@ -1036,8 +1042,20 @@ void ReadState::get_next_overlapping_tile_sparse(
     tile_subarray_end[i] = tile_subarray[2*i+1];
 
   // Update the search tile position
-  if(search_tile_pos_ == -1)
-     search_tile_pos_ = tile_search_range_[0];
+  
+  if (USING_INDEX){
+    ++search_tile_pos_idx_; 
+    if(search_tile_pos_idx_ >= search_tile_candidates_.size()) {
+      done_ = true;
+      return;
+    } else {
+      search_tile_pos_ = search_tile_candidates_[search_tile_pos_idx_];
+    }
+  } else {
+    if(search_tile_pos_ == -1)
+      search_tile_pos_ = tile_search_range_[0];
+  }
+  
  
   // Reset overlaps
   search_tile_overlap_ = 0;
@@ -1065,13 +1083,25 @@ void ReadState::get_next_overlapping_tile_sparse(
     }
   }
 
+  
+
   // Find the position to the next overlapping tile with the input tile
   for(;;) {
     // No overlap - exit
-    if(search_tile_pos_ > tile_search_range_[1]) {
-      done_ = true;
-      break;
+    if (USING_INDEX){
+      if(search_tile_pos_idx_ >= search_tile_candidates_.size()) {
+        done_ = true;
+        break;
+      } else {
+        search_tile_pos_ = search_tile_candidates_[search_tile_pos_idx_];
+      }
+    } else {
+      if(search_tile_pos_ > tile_search_range_[1]) {
+        done_ = true;
+        break;
+      }
     }
+    
 
     // Get overlap between MBR and tile subarray
     const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
@@ -1092,7 +1122,11 @@ void ReadState::get_next_overlapping_tile_sparse(
              tile_subarray_end) > 0) {
         break;
       } else {
-        ++search_tile_pos_;
+        if (USING_INDEX)
+          ++search_tile_pos_idx_;
+        else 
+          ++search_tile_pos_;
+        
         continue;
       }
     }

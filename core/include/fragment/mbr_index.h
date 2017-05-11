@@ -68,7 +68,6 @@ private:
     void build3d(std::vector<void*> &mbrs);
     void intersect2d(const double* subarray, std::vector<int64_t> &result);
     void intersect3d(const double* subarray, std::vector<int64_t> &result);
-    bool testTree2d(std::vector<void*> &mbrs);
 };
 
 #endif
