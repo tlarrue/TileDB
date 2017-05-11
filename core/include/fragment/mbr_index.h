@@ -41,13 +41,13 @@ class MbrIndex {
     typedef bg::model::point<double, 2, bg::cs::cartesian> point2d;
     typedef bg::model::box<point2d> box2d;
     typedef std::pair<box2d, unsigned long> value2d;
-    typedef bgi::rtree<value2d, bgi::quadratic<16>> pack_rtree2d;
+    typedef bgi::rtree<value2d, bgi::rstar<16,4>> pack_rtree2d;
     
     // 3-D types
     typedef bg::model::point<double, 3, bg::cs::cartesian> point3d;
     typedef bg::model::box<point3d> box3d;
     typedef std::pair<box3d, unsigned long> value3d;
-    typedef bgi::rtree<value3d, bgi::quadratic<16>> pack_rtree3d;
+    typedef bgi::rtree<value3d, bgi::rstar<16,4>> pack_rtree3d;
     
 public:
     /** Constructor. */
